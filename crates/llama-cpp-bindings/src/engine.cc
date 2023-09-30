@@ -22,7 +22,8 @@ class TextInferenceEngineImpl : public TextInferenceEngine {
     ctx_(std::move(ctx)) {
   }
 
-  void start(rust::Slice<const uint32_t> input_token_ids) const override {
+  void start(rust::Slice<const uint32_t> input_token_ids) override {
+    n_ctx_ = 0;
     auto* ctx = ctx_.get();
     llama_reset_timings(ctx);
     std::vector<llama_token> tokens_list(input_token_ids.begin(), input_token_ids.end());
@@ -33,13 +34,13 @@ class TextInferenceEngineImpl : public TextInferenceEngine {
     }
   }
 
-  uint32_t step() const override {
+  uint32_t step() override {
     const llama_token id = sample();
     eval(const_cast<llama_token*>(&id), 1, /* reset = */ false);
     return id;
   }
 
-  void end() const override {
+  void end() override {
     llama_print_timings(ctx_.get());
   }
 
@@ -58,20 +59,18 @@ class TextInferenceEngineImpl : public TextInferenceEngine {
     return std::distance(logits, std::max_element(logits, logits + n_vocab));
   }
 
-  bool eval(llama_token* data, size_t size, bool reset) const {
+  bool eval(llama_token* data, size_t size, bool reset) {
     auto* ctx = ctx_.get();
-    if (llama_eval(
-          ctx,
-          data,
-          size,
-          reset ? 0 : llama_get_kv_cache_token_count(ctx))) {
-      fprintf(stderr, "%s : failed to eval\n", __func__);
+    if (llama_decode(ctx, llama_batch_get_one(data, size, reset ? 0 : n_ctx_, 0))) {
+      fprintf(stderr, "%s : failed to decode\n", __func__);
       return false;
     }
 
+    n_ctx_ += size;
     return true;
   }
 
+  size_t n_ctx_;
   owned<llama_model> model_;
   owned<llama_context> ctx_;
 };
@@ -100,7 +99,7 @@ struct BackendInitializer {
 };
 } // namespace
 
-std::shared_ptr<TextInferenceEngine> create_engine(rust::Str model_path) {
+std::unique_ptr<TextInferenceEngine> create_engine(rust::Str model_path) {
   static BackendInitializer initializer;
 
   llama_model_params model_params = llama_model_default_params();
@@ -117,7 +116,7 @@ std::shared_ptr<TextInferenceEngine> create_engine(rust::Str model_path) {
   ctx_params.n_batch = N_BATCH;
   llama_context* ctx = llama_new_context_with_model(model, ctx_params);
 
-  return std::make_shared<TextInferenceEngineImpl>(
+  return std::make_unique<TextInferenceEngineImpl>(
       owned<llama_model>(model, llama_free_model),
       owned<llama_context>(ctx, llama_free)
   );
