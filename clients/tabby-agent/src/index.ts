@@ -1,25 +1,12 @@
-export { TabbyAgent, TabbyAgentOptions } from "./TabbyAgent";
-export {
-  Agent,
-  AgentStatus,
-  AgentFunction,
-  AgentEvent,
-  AgentEventEmitter,
-  AgentIssue,
-  StatusChangedEvent,
-  ConfigUpdatedEvent,
-  AuthRequiredEvent,
-  IssuesUpdatedEvent,
-  SlowCompletionResponseTimeIssue,
-  HighCompletionTimeoutRateIssue,
-  ClientProperties,
-  AgentInitOptions,
-  ServerHealthState,
-  CompletionRequest,
-  CompletionResponse,
-  LogEventRequest,
-  AbortSignalOption,
-  agentEventNames,
-} from "./Agent";
-export { AgentConfig, PartialAgentConfig } from "./AgentConfig";
-export { DataStore } from "./dataStore";
+#!/usr/bin/env node
+
+import * as dns from "node:dns";
+import { isBrowser } from "./env";
+import { Server } from "./server";
+
+if (!isBrowser) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
+const server = new Server();
+server.listen();

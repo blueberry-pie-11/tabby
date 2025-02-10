@@ -1,34 +1,14 @@
 use std::path::PathBuf;
 
-use assert_json_diff::assert_json_include;
 use lazy_static::lazy_static;
-use serde::Deserialize;
 use serde_json::json;
+use serial_test::serial;
 use tokio::{
     process::Command,
     time::{sleep, Duration},
 };
 
 lazy_static! {
-    static ref SERVER: bool = {
-        let mut cmd = Command::new(tabby_path());
-        cmd.arg("serve")
-            .arg("--model")
-            .arg("TabbyML/StarCoder-1B")
-            .arg("--port")
-            .arg("9090")
-            .arg("--device")
-            .arg("metal")
-            .kill_on_drop(true);
-        tokio::task::spawn(async move {
-            cmd.spawn()
-                .expect("Failed to start server")
-                .wait()
-                .await
-                .unwrap();
-        });
-        true
-    };
     static ref CLIENT: reqwest::Client = reqwest::Client::new();
 }
 
@@ -40,35 +20,60 @@ fn workspace_dir() -> PathBuf {
         .output()
         .unwrap()
         .stdout;
-    let cargo_path = std::path::Path::new(std::str::from_utf8(&output).unwrap().trim());
-    cargo_path.parent().unwrap().to_path_buf()
+    let cargo_path = std::path::Path::new(std::str::from_utf8(&output).expect("Valid path").trim());
+    cargo_path
+        .parent()
+        .expect("Path must have a parent folder")
+        .to_path_buf()
 }
 
 fn tabby_path() -> PathBuf {
     workspace_dir().join("target/debug/tabby")
 }
 
-fn golden_path() -> PathBuf {
-    workspace_dir().join("crates/tabby/tests/golden.json")
+fn initialize_server(gpu_device: Option<&str>) {
+    let mut cmd = Command::new(tabby_path());
+    cmd.arg("serve")
+        .arg("--model")
+        .arg("TabbyML/StarCoder-1B")
+        .arg("--no-webserver")
+        .arg("--port")
+        .arg("9090")
+        .kill_on_drop(true);
+
+    if let Some(gpu_device) = gpu_device {
+        cmd.arg("--device").arg(gpu_device);
+    }
+
+    tokio::task::spawn(async move {
+        cmd.spawn()
+            .expect("Failed to start server")
+            .wait()
+            .await
+            .expect("Failed to start server");
+    });
 }
 
-async fn wait_for_server() {
-    lazy_static::initialize(&SERVER);
+async fn wait_for_server(gpu_device: Option<&str>) {
+    initialize_server(gpu_device);
 
     loop {
         println!("Waiting for server to start...");
-        let is_ok = reqwest::get("http://localhost:9090/v1/health")
-            .await
-            .is_ok();
-        if is_ok {
-            break;
-        } else {
-            sleep(Duration::from_secs(5)).await;
+        match reqwest::get("http://127.0.0.1:9090/v1/health").await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    break;
+                }
+            }
+            Err(e) => {
+                println!("Waiting for server to start: {:?}", e);
+            }
         }
+        sleep(Duration::from_secs(5)).await;
     }
 }
 
-async fn golden_test(body: serde_json::Value, expected: serde_json::Value) {
+async fn golden_test(body: serde_json::Value) -> serde_json::Value {
     let mut body = body.clone();
     body.as_object_mut().unwrap().insert(
         "debug_options".to_owned(),
@@ -77,8 +82,18 @@ async fn golden_test(body: serde_json::Value, expected: serde_json::Value) {
         }),
     );
 
+    let resp = CLIENT
+        .post("http://127.0.0.1:9090/v1/completions")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+
+    let info = resp.text().await.unwrap();
+    eprintln!("info {}", info);
+
     let actual: serde_json::Value = CLIENT
-        .post("http://localhost:9090/v1/completions")
+        .post("http://127.0.0.1:9090/v1/completions")
         .json(&body)
         .send()
         .await
@@ -86,21 +101,59 @@ async fn golden_test(body: serde_json::Value, expected: serde_json::Value) {
         .json()
         .await
         .unwrap();
-    assert_json_include!(actual: actual, expected: expected);
+    actual
 }
 
-#[derive(Deserialize)]
-struct TestCase {
-    request: serde_json::Value,
-    expected: serde_json::Value,
+macro_rules! assert_golden {
+    ($expr:expr) => {
+        insta::assert_yaml_snapshot!(golden_test($expr).await, {
+            ".id" => "test-id"
+        });
+    }
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[tokio::test]
+#[serial]
+async fn run_golden_tests() {
+    wait_for_server(Some("metal")).await;
+
+    assert_golden!(json!({
+            "language": "python",
+            "seed": 0,
+            "segments": {
+                "prefix": "def fib(n):\n    ",
+                "suffix": "\n        return fib(n - 1) + fib(n - 2)"
+            }
+    }));
+
+    assert_golden!(json!({
+            "language": "python",
+            "seed": 0,
+            "segments": {
+                "prefix": "import datetime\n\ndef parse_expenses(expenses_string):\n    \"\"\"Parse the list of expenses and return the list of triples (date, value, currency).\n    Ignore lines starting with #.\n    Parse the date using datetime.\n    Example expenses_string:\n        2016-01-02 -34.01 USD\n        2016-01-03 2.59 DKK\n        2016-01-03 -2.72 EUR\n    \"\"\"\n    for line in expenses_string.split('\\n'):\n        "
+            }
+    }));
 }
 
 #[tokio::test]
-async fn run_golden_tests() {
-    wait_for_server().await;
+#[serial]
+async fn run_golden_tests_cpu() {
+    wait_for_server(Some("cpu")).await;
 
-    let cases: Vec<TestCase> = serdeconv::from_json_file(golden_path()).unwrap();
-    for case in cases {
-        golden_test(case.request, case.expected).await;
-    }
+    assert_golden!(json!({
+            "language": "python",
+            "seed": 0,
+            "segments": {
+                "prefix": "def is_prime(n):\n",
+            }
+    }));
+
+    assert_golden!(json!({
+            "language": "python",
+            "seed": 0,
+            "segments": {
+                "prefix": "def char_frequencies(str):\n  freqs = {}\n  ",
+            }
+    }));
 }

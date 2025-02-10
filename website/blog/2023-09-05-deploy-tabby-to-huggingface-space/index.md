@@ -1,5 +1,5 @@
 ---
-slug: deploy-tabby-to-huggingface-space.md
+slug: /2023/09/05/deploy-tabby-to-huggingface-space
 title: Deploying a Tabby Instance in Hugging Face Spaces
 authors:
   - name: Rand Xie
@@ -25,7 +25,7 @@ Let’s firstly take a look at what steps are needed to deploy a Tabby instance 
 
 **Step 3:** After space is built, you will be able to send requests to the APIs.
 
-That's it! With the hosted APIs, now you can connect Tabby's [IDE extensions](/docs/getting-started) to the API endpoint. Next, we will deep dive into each step with screenshots!!
+That's it! With the hosted APIs, now you can connect Tabby's [IDE extensions](/docs/extensions/installation/vscode) to the API endpoint. Next, we will deep dive into each step with screenshots!!
 **Everything will be done in the Hugging Face UI. No local setup is needed.**
 
 :::tip
@@ -82,7 +82,7 @@ If the App is up successfully, you should see this page:
 
 #### Call code completion API
 
-Now, you are able to call the completion API. The full URL is https://{YOUR-ACCOUNT-NAME}-tabbyml.hf.space/v1/completions. In this post, the URL is https://randxie-tabbyml.hf.space/v1/completions.
+Now, you are able to call the completion API. The full URL is https://YOUR-ACCOUNT-NAME-tabbyml.hf.space/v1/completions. In this post, the URL is https://randxie-tabbyml.hf.space/v1/completions.
 
 To test if your APIs are up and running, use [this online tool](https://reqbin.com/curl) to send curl commands:
 

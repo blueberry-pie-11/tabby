@@ -4,24 +4,26 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
-import com.tabbyml.intellijtabby.settings.ApplicationSettingsState
+import com.tabbyml.intellijtabby.settings.SettingsService
+import com.tabbyml.intellijtabby.settings.SettingsState
 
 class ToggleInlineCompletionTriggerMode : AnAction() {
+  val settings = service<SettingsService>()
+
   override fun actionPerformed(e: AnActionEvent) {
-    val settings = service<ApplicationSettingsState>()
     settings.completionTriggerMode = when (settings.completionTriggerMode) {
-      ApplicationSettingsState.TriggerMode.AUTOMATIC -> ApplicationSettingsState.TriggerMode.MANUAL
-      ApplicationSettingsState.TriggerMode.MANUAL -> ApplicationSettingsState.TriggerMode.AUTOMATIC
+      SettingsState.TriggerMode.AUTOMATIC -> SettingsState.TriggerMode.MANUAL
+      SettingsState.TriggerMode.MANUAL -> SettingsState.TriggerMode.AUTOMATIC
     }
+    e.project?.let { settings.notifyChanges(it) }
   }
 
   override fun update(e: AnActionEvent) {
-    val settings = service<ApplicationSettingsState>()
-    if (settings.completionTriggerMode == ApplicationSettingsState.TriggerMode.AUTOMATIC) {
-      e.presentation.text = "Switch to Manual Mode"
-      e.presentation.description = "Manual trigger inline completion suggestions by pressing `Alt + \\`."
+    if (settings.completionTriggerMode == SettingsState.TriggerMode.AUTOMATIC) {
+      e.presentation.text = "Disable Auto Inline Completion"
+      e.presentation.description = "You can trigger inline completion manually."
     } else {
-      e.presentation.text = "Switch to Automatic Mode"
+      e.presentation.text = "Enable Auto Inline Completion"
       e.presentation.description = "Show inline completion suggestions automatically."
     }
   }

@@ -1,14 +1,14 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require('prism-react-renderer/themes/palenight');
-const darkCodeTheme = require('prism-react-renderer/themes/dracula');
+import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
-const config = {
+export default {
   title: 'Tabby',
   tagline: 'Opensource, self-hosted AI coding assistant',
   favicon: 'img/favicon.ico',
+  trailingSlash: true,
 
   // Set the production url of your site here
   url: 'https://tabby.tabbyml.com',
@@ -32,6 +32,16 @@ const config = {
     locales: ['en'],
   },
 
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        href: 'https://fonts.googleapis.com/css?family=Azeret Mono',
+        rel: 'stylesheet'
+      }
+    }
+  ],
+
   presets: [
     [
       'docusaurus-preset-openapi',
@@ -43,6 +53,9 @@ const config = {
           // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/TabbyML/tabby/edit/main/website',
+          admonitions: {
+            keywords: ['note', 'tip', 'info', 'caution', 'warning', 'danger', 'subscription'],
+          },
         },
         api: {
           path: "static/openapi.json",
@@ -52,6 +65,7 @@ const config = {
           showReadingTime: true,
           editUrl:
             'https://github.com/TabbyML/tabby/edit/main/website',
+          blogSidebarCount: 20,
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -64,8 +78,12 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       image: 'img/tabby-social-card.png',
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true
+        },
+      },
       navbar: {
-        title: 'Tabby',
         logo: {
           alt: 'Tabby',
           src: 'img/logo.png',
@@ -77,14 +95,13 @@ const config = {
             position: 'left',
             label: 'Docs',
           },
-          {to: '/playground', label: 'Playground', position: 'left'},
-          {to: '/blog', label: 'Blog', position: 'left'},
-          {to: '/api', label: 'API', position: 'left'},
+          { to: '/blog', label: 'Blog', position: 'left' },
+          { to: '/api', label: 'API', position: 'left' },
           {
             href: 'https://github.com/TabbyML/tabby',
             label: 'GitHub',
             position: 'right',
-              className: "header-github-link",
+            className: "header-github-link",
 
           },
         ],
@@ -97,11 +114,7 @@ const config = {
             items: [
               {
                 label: 'Docs',
-                to: '/docs/getting-started',
-              },
-              {
-                label: 'Playground',
-                to: '/playground',
+                to: '/docs/welcome',
               },
               {
                 label: 'API',
@@ -114,7 +127,7 @@ const config = {
             items: [
               {
                 label: 'Slack',
-                href: 'https://join.slack.com/t/tabbycommunity/shared_invite/zt-1xeiddizp-bciR2RtFTaJ37RBxr8VxpA',
+                href: 'https://slack.tabbyml.com',
               },
               {
                 label: 'GitHub',
@@ -132,6 +145,13 @@ const config = {
               {
                 label: "Status",
                 href: "https://uptime.tabbyml.com"
+              },
+              {
+                label: "Media Kit",
+                href: "https://www.figma.com/community/file/1299817332961215434/tabby-mediakit"
+              },
+              {
+                html: `<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=96661b6c-b6b6-4340-9ffb-dcc46d7b970a" />`
               }
             ],
           },
@@ -139,15 +159,19 @@ const config = {
         copyright: `Copyright © ${new Date().getFullYear()} TabbyML, Inc.`,
       },
       prism: {
-        theme: lightCodeTheme,
-        darkTheme: darkCodeTheme,
+        theme: prismThemes.palenight,
+        darkTheme: prismThemes.dracula,
         additionalLanguages: ['toml', 'rust', 'scheme'],
       },
       colorMode: {
         defaultMode: "light",
         respectPrefersColorScheme: false,
         disableSwitch: true
-      }
+      },
+      tableOfContents: {
+        minHeadingLevel: 2,
+        maxHeadingLevel: 5,
+      },
     }),
 
   plugins: [
@@ -170,7 +194,95 @@ const config = {
         enableInDevelopment: false,
       },
     ],
-  ],
-};
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            to: '/blog/2024/02/05/create-tabby-extension-with-language-server-protocol',
+            from: '/blog/running-tabby-as-a-language-server'
+          },
+          {
+            to: '/blog/2023/09/05/deploy-tabby-to-huggingface-space',
+            from: '/blog/deploy-tabby-to-huggingface-space.md',
+          },
+          {
+            to: '/blog/2023/08/31/first-stable-release',
+            from: '/blog/first-stable-release',
+          },
+          {
+            to: '/blog/2023/10/14/seed-round-release-0-3-0',
+            from: '/blog/2023/10/14/seed-round-release-0-3-0-RAG',
+          },
+          {
+            to: '/docs/quick-start/installation/docker',
+            from: '/docs/self-hosting/docker'
+          },
+          {
+            to: '/docs/extensions/installation/vscode',
+            from: '/docs/extensions/vscode'
+          },
+          {
+            to: '/docs/administration/context',
+            from: '/docs/configuration'
+          },
+          {
+            to: '/docs/welcome',
+            from: '/docs/getting-started'
+          },
+          {
+            to: '/docs/extensions/installation/vscode',
+            from: '/docs/extensions'
+          },
+          {
+            to: '/docs/extensions/installation/vscode',
+            from: '/docs/extensions/installation'
+          },
+          {
+            to: '/docs/quick-start/installation/docker',
+            from: '/docs/installation'
+          },
+          {
+            to: '/docs/administration/upgrade',
+            from: '/docs/administration'
+          },
+          {
+            to: '/docs/welcome',
+            from: '/docs',
+          },
+          {
+            to: '/docs/quick-start/installation/docker',
+            from: '/docs/quick-start/installation'
+          },
+          {
+            to: '/docs/references/programming-languages',
+            from: '/docs/programming-languages'
+          },
+        ],
+        createRedirects(existingPath) {
+          // Create redirection from /docs/installation/* to /docs/quick-start/installation/*
+          if (existingPath.startsWith("/docs/quick-start/installation")) {
+            return [
+              existingPath.replace("/docs/quick-start/installation", "/docs/installation"),
+            ]
+          }
 
-module.exports = config;
+          // Create redirection from /docs/quick-start/installation/* to /docs/references/cloud-deployment/*
+          if (existingPath.startsWith("/docs/references/cloud-deployment/")) {
+            return [
+              existingPath.replace("/docs/references/cloud-deployment/", "/docs/quick-start/installation/"),
+              existingPath.replace("/docs/references/cloud-deployment/", "/docs/installation/"),
+            ]
+          }
+        }
+      },
+    ],
+  ],
+
+  scripts: [
+    {
+      src: "https://tally.so/widgets/embed.js",
+      async: true
+    }
+  ]
+};

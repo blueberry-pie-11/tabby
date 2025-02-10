@@ -1,42 +1,24 @@
-mod fastchat;
-mod vertex_ai;
+mod chat;
+mod completion;
+mod embedding;
+mod rate_limit;
 
-use fastchat::FastChatEngine;
-use serde_json::Value;
-use tabby_inference::TextGeneration;
-use vertex_ai::VertexAIEngine;
+pub use chat::create as create_chat;
+pub use completion::{build_completion_prompt, create};
+pub use embedding::create as create_embedding;
 
-pub fn create(model: &str) -> (Box<dyn TextGeneration>, String) {
-    let params = serde_json::from_str(model).expect("Failed to parse model string");
-    let kind = get_param(&params, "kind");
-    if kind == "vertex-ai" {
-        let api_endpoint = get_param(&params, "api_endpoint");
-        let authorization = get_param(&params, "authorization");
-        let engine = Box::new(VertexAIEngine::create(
-            api_endpoint.as_str(),
-            authorization.as_str(),
-        ));
-        (engine, VertexAIEngine::prompt_template())
-    } else if kind == "fastchat" {
-        let model_name = get_param(&params, "model_name");
-        let api_endpoint = get_param(&params, "api_endpoint");
-        let authorization = get_param(&params, "authorization");
-        let engine = Box::new(FastChatEngine::create(
-            api_endpoint.as_str(),
-            model_name.as_str(),
-            authorization.as_str(),
-        ));
-        (engine, FastChatEngine::prompt_template())
+fn create_reqwest_client(api_endpoint: &str) -> reqwest::Client {
+    let builder = reqwest::Client::builder();
+
+    let is_localhost = api_endpoint.starts_with("http://localhost")
+        || api_endpoint.starts_with("http://127.0.0.1");
+    let builder = if is_localhost {
+        builder.no_proxy()
     } else {
-        panic!("Only vertex_ai and fastchat are supported for http backend");
-    }
+        builder
+    };
+
+    builder.build().unwrap()
 }
 
-fn get_param(params: &Value, key: &str) -> String {
-    params
-        .get(key)
-        .unwrap_or_else(|| panic!("Missing {} field", key))
-        .as_str()
-        .expect("Type unmatched")
-        .to_string()
-}
+static AZURE_API_VERSION: &str = "2024-02-01";
